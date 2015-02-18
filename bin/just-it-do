@@ -1,0 +1,38 @@
+#!/bin/bash
+
+function validate_name() {
+    name=`basename $1`
+    if [[ $name =~ ^[[:digit:]][[:digit:]]_[[:alnum:]]+$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function rundir() {
+    export CURDIR=$1
+    for i in ${CURDIR}/*; do
+        validate_name $i || continue
+        if [ -f $i -a -x $i ]; then
+            logger -t ${LOGTAG}.main -- "executing $i"
+            $i 2>&1 | logger -t "${LOGTAG}.stdio =="
+            EXITCODE=${PIPESTATUS[0]}
+            if [ $EXITCODE -eq 0 ] ; then
+                logger -t ${LOGTAG}.main -- "successfully executed $i"
+                chmod -x $i
+            else
+                logger -t ${LOGTAG}.main -- "failed to execute $i, exit with $EXITCODE"
+                exit $EXITCODE
+            fi
+        elif [ -d $i ]; then
+            rundir $i
+        fi
+    done
+}
+
+[[ ${BASH_VERSINFO[0]} -ge 3 ]] || (echo "bash version should be 3 or higher"; exit 1)
+
+LOGTAG=runpart.$$
+taskstack=$1
+[ -d $taskstack ] && taskstack=${taskstack%/} || ( echo "$taskstack must be a directory" ; exit 1)
+rundir $taskstack
