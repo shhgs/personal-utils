@@ -1,1 +1,1 @@
-# contrib-to-public
+# Handy shell scripts
